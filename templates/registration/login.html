@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-5 col-lg-4">
+  <div class="card"><div class="card-body p-4">
+    <h4 class="mb-3">📊 Model Monitoring Dashboard</h4>
+    {% if form.errors %}<div class="alert alert-danger">Invalid username or password.</div>{% endif %}
+    <form method="post">{% csrf_token %}
+      <div class="mb-3"><label class="form-label" for="id_username">Username</label>
+        <input class="form-control" name="username" id="id_username" autofocus required></div>
+      <div class="mb-3"><label class="form-label" for="id_password">Password</label>
+        <input class="form-control" type="password" name="password" id="id_password" required></div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn btn-primary w-100">Sign in</button>
+    </form>
+    <p class="small text-muted mt-3 mb-0">Accounts are created by an administrator (see README).</p>
+  </div></div>
+</div></div>
+{% endblock %}

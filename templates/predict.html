@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}Predict{% endblock %}
+{% block content %}
+<h3 class="mb-4">Prediction Playground</h3>
+{% if not tm %}
+  <div class="card"><div class="card-body empty">No trained models yet. <a href="{% url 'train' %}">Train a model</a> first.</div></div>
+{% else %}
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card"><div class="card-body">
+    <form method="get" class="mb-3"><label class="form-label" for="model-pick">Model</label>
+      <select class="form-select" id="model-pick" name="model" onchange="this.form.submit()">
+        {% for m in models %}<option value="{{ m.pk }}" {% if m.pk == tm.pk %}selected{% endif %}>v{{ m.version }} · {{ m.algorithm_label }} · {{ m.dataset.name }}→{{ m.target_column }}{% if production and m.pk == production.pk %} (production){% endif %}</option>{% endfor %}
+      </select></form>
+    <form method="post">{% csrf_token %}<input type="hidden" name="model" value="{{ tm.pk }}">
+      <div class="row g-2">
+      {% for f in fields %}<div class="col-md-6">
+        <label class="form-label" for="{{ f.key }}">{{ f.name }} <small class="text-muted">{% if f.kind == 'numeric' %}(number, seen {{ f.min|num:2 }}–{{ f.max|num:2 }}){% else %}(category){% endif %}</small></label>
+        {% if f.kind == 'categorical' and f.choices %}
+          <select class="form-select {% if f.error %}is-invalid{% endif %}" name="{{ f.key }}" id="{{ f.key }}"><option value="">(missing)</option>
+            {% for c in f.choices %}<option value="{{ c }}" {% if f.value == c %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+        {% else %}
+          <input class="form-control {% if f.error %}is-invalid{% endif %}" name="{{ f.key }}" id="{{ f.key }}" value="{{ f.value }}" {% if f.kind == 'numeric' %}type="number" step="any"{% else %}type="text" maxlength="200"{% endif %} placeholder="{% if f.kind == 'numeric' %}e.g. {{ f.median|num:2 }}{% endif %}">
+        {% endif %}
+        {% if f.error %}<div class="invalid-feedback">{{ f.error }}</div>{% endif %}
+      </div>{% endfor %}</div>
+      <p class="small text-muted mt-2">Leave a field blank to treat it as missing (the model’s fitted imputer fills it).</p>
+      <button class="btn btn-primary">Predict</button>
+    </form>
+  </div></div></div>
+  <div class="col-lg-5"><div class="card"><div class="card-body">
+    <h6>Result</h6>
+    {% if result and result.status == 'success' %}
+      <div class="stat mb-2">{{ result.output }}</div>
+      <p class="small text-muted mb-2">Model v{{ result.model_version }} · measured inference latency {{ result.latency_ms|num:3 }} ms · logged as #{{ result.pk }}</p>
+      {% if result.probabilities %}<table class="table table-sm"><thead><tr><th>Class</th><th>Probability</th></tr></thead><tbody>
+        {% for k, v in result.probabilities.items %}<tr><td>{{ k }}</td><td>{{ v|pct }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+    {% elif result %}<div class="alert alert-danger mb-0">Prediction failed and was logged as #{{ result.pk }}: {{ result.error }}</div>
+    {% else %}<div class="empty">Submit the form to generate a real prediction from the saved pipeline.</div>{% endif %}
+  </div></div></div>
+</div>
+{% endif %}
+{% endblock %}

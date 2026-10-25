@@ -1,0 +1,17 @@
+.env
+*.pyc
+__pycache__/
+.venv*/
+venv/
+db.sqlite3
+data/*
+!data/.gitkeep
+datasets/*
+!datasets/.gitkeep
+model_artifacts/*
+!model_artifacts/.gitkeep
+staticfiles/
+reports/
+*.joblib
+.idea/
+.vscode/

@@ -1,0 +1,36 @@
+name: model-monitoring-dashboard
+
+services:
+  web:
+    image: model-monitoring-dashboard:${MMD_IMAGE_TAG:-latest}
+    build: .
+    container_name: model-monitoring-dashboard
+    restart: unless-stopped
+    ports:
+      - "8002:8000"          # host 8002 -> container 8000  =>  http://localhost:8002
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env or the environment}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://localhost:8002,http://127.0.0.1:8002}
+      DJANGO_SECURE_COOKIES: ${DJANGO_SECURE_COOKIES:-False}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-5}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - mmd_data:/app/data                 # SQLite database (+ pre-deploy backups)
+      - mmd_artifacts:/app/model_artifacts # fitted Joblib pipelines
+      - mmd_datasets:/app/datasets         # uploaded CSV files
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  mmd_data:
+  mmd_artifacts:
+  mmd_datasets:

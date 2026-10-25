@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}Drift{% endblock %}
+{% block content %}
+<h3 class="mb-4">Data Drift Detection</h3>
+{% if not tm %}<div class="card"><div class="card-body empty">No models yet.</div></div>
+{% else %}
+{% include "_model_picker.html" %}
+<div class="alert alert-light border small">Reference = a sample of the model’s training features and predictions ({{ n_ref }} rows). Current = inputs and outputs of {{ n_current }} successful logged predictions.
+  Methods: <strong>PSI</strong> (effect size), <strong>Kolmogorov–Smirnov</strong> for numeric and <strong>Chi-square</strong> for categorical features (evidence). A feature is flagged only when both agree. <strong>Drift ≠ performance degradation</strong> — see Model Monitoring for performance.</div>
+<form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="model" value="{{ tm.pk }}"><button class="btn btn-primary">Run drift check now</button></form>
+{% if not report %}<div class="card"><div class="card-body empty">No drift check has been run for this model.</div></div>
+{% else %}
+{% with r=report.results %}
+<div class="card mb-3"><div class="card-body">
+  <h6>Latest report <span class="badge badge-{{ report.status }}">{{ report.status }}</span></h6>
+  <p class="small text-muted mb-2">{{ report.created_at|date:"Y-m-d H:i:s" }} UTC · reference n={{ report.reference_size }} · current n={{ report.current_size }} · thresholds: PSI warning ≥ {{ report.thresholds.psi_warning }}, drift ≥ {{ report.thresholds.psi_drift }}, p &lt; {{ report.thresholds.p_value_alpha }}, min current samples {{ report.thresholds.min_current_samples }}</p>
+  <p class="mb-2">{{ r.message }}</p>
+  {% if r.affected_features %}<p class="mb-2"><strong>Affected features:</strong> {% for f in r.affected_features %}<code>{{ f }}</code> {% endfor %}</p>{% endif %}
+  {% if r.features %}
+  <div class="table-responsive"><table class="table table-sm" data-sortable><thead><tr><th class="sortable">Feature</th><th class="sortable">Kind</th><th class="sortable">PSI</th><th class="sortable">Test</th><th class="sortable">Statistic</th><th class="sortable">p-value</th><th class="sortable">Status</th></tr></thead><tbody>
+    {% for f in r.features %}<tr><td>{{ f.name }}</td><td>{{ f.kind }}</td><td>{{ f.psi|num }}</td><td>{{ f.test }}</td><td>{{ f.statistic|num }}</td><td>{{ f.p_value|num:4 }}</td><td><span class="badge badge-{{ f.status }}">{{ f.status }}</span></td></tr>{% endfor %}
+    {% if r.prediction_drift %}{% with f=r.prediction_drift %}<tr class="table-light"><td>Prediction distribution</td><td>{{ f.kind }}</td><td>{{ f.psi|num }}</td><td>{{ f.test }}</td><td>{{ f.statistic|num }}</td><td>{{ f.p_value|num:4 }}</td><td><span class="badge badge-{{ f.status }}">{{ f.status }}</span></td></tr>{% endwith %}{% endif %}
+  </tbody></table></div>{% endif %}
+</div></div>
+{% if psi_chart %}{% include "_chart.html" with cfg=psi_chart cid="psi" title="PSI per feature (0.10 = warning, 0.25 = drift)" %}{% endif %}
+{% endwith %}
+<div class="card"><div class="card-body"><h6>History</h6>
+  {% for x in reports %}<div class="small border-bottom py-1">{{ x.created_at|date:"Y-m-d H:i" }} · <span class="badge badge-{{ x.status }}">{{ x.status }}</span> · reference {{ x.reference_size }} / current {{ x.current_size }}</div>{% endfor %}
+</div></div>
+{% endif %}{% endif %}
+{% endblock %}

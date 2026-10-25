@@ -1,0 +1,47 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}{{ ds.name }}{% endblock %}
+{% block content %}
+<h3 class="mb-1">{{ ds.name }} {% if ds.is_sample %}<span class="badge text-bg-info fs-6">Sample data</span>{% endif %}</h3>
+<p class="text-muted">{{ ds.original_filename }} · uploaded {{ ds.created_at|date:"Y-m-d H:i" }}</p>
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ profile.rows }}</div><div class="stat-label">Rows</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ profile.columns }}</div><div class="stat-label">Columns</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ profile.missing_total }}</div><div class="stat-label">Missing values</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ profile.duplicate_rows }}</div><div class="stat-label">Duplicate rows</div></div></div></div>
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+    <h6>Target column</h6>
+    <form method="post">{% csrf_token %}
+      {% for e in form.non_field_errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+      <div class="mb-2"><label class="form-label" for="id_target_column">Target</label>
+        <select class="form-select" name="target_column" id="id_target_column">
+          {% for c in columns %}<option value="{{ c }}" {% if c == ds.target_column or not ds.target_column and forloop.last %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></div>
+      <div class="mb-2"><label class="form-label" for="id_problem_type">Problem type</label>
+        <select class="form-select" name="problem_type" id="id_problem_type">
+          <option value="classification" {% if ds.problem_type == 'classification' or not ds.problem_type and suggested == 'classification' %}selected{% endif %}>Classification</option>
+          <option value="regression" {% if ds.problem_type == 'regression' or not ds.problem_type and suggested == 'regression' %}selected{% endif %}>Regression</option></select></div>
+      <button class="btn btn-primary btn-sm">Save target</button>
+      {% if ds.target_column %}<a class="btn btn-outline-primary btn-sm" href="{% url 'train' %}">Train models →</a>{% endif %}
+    </form>
+  </div></div></div>
+  <div class="col-lg-7">
+    {% if dist %}{% include "_chart.html" with cfg=dist cid="target-dist" title="Target distribution" %}
+    {% else %}<div class="card h-100"><div class="card-body empty">Select a target column to see its distribution.</div></div>{% endif %}
+  </div>
+</div>
+<div class="card mb-3"><div class="card-body"><h6>Features</h6>
+  <div class="table-responsive"><table class="table table-sm" data-sortable>
+    <thead><tr><th class="sortable">Name</th><th class="sortable">Type</th><th class="sortable">Kind</th><th class="sortable">Missing</th><th class="sortable">Unique</th></tr></thead><tbody>
+    {% for f in profile.features %}<tr><td>{{ f.name }}</td><td><code>{{ f.dtype }}</code></td><td>{{ f.kind }}</td><td>{{ f.missing }}</td><td>{{ f.unique }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="small text-muted mb-0">Numerical: {{ profile.numeric|length }} · Categorical: {{ profile.categorical|length }}</p>
+</div></div>
+{% if describe %}<div class="card mb-3"><div class="card-body"><h6>Descriptive statistics (numerical features)</h6>
+  <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Feature</th><th>Count</th><th>Mean</th><th>Std</th><th>Min</th><th>Max</th></tr></thead><tbody>
+  {% for col, s in describe.items %}<tr><td>{{ col }}</td><td>{{ s.count|num:0 }}</td><td>{{ s.mean|num }}</td><td>{{ s.std|num }}</td><td>{{ s.min|num }}</td><td>{{ s.max|num }}</td></tr>{% endfor %}
+  </tbody></table></div></div></div>{% endif %}
+<div class="card"><div class="card-body"><h6>Preview (first 15 rows)</h6>
+  <div class="table-responsive"><table class="table table-sm table-striped"><thead><tr>{% for c in columns %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
+  {% for r in rows %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div></div>
+{% endblock %}

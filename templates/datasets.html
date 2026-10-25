@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Datasets{% endblock %}
+{% block content %}
+<h3 class="mb-4">Dataset Management</h3>
+<div class="row g-3 mb-4">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+    <h6>Upload a CSV</h6>
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="mb-2"><label class="form-label" for="id_name">Name</label><input class="form-control" name="name" id="id_name" maxlength="120" required value="{{ form.name.value|default:'' }}">{{ form.name.errors }}</div>
+      <div class="mb-2"><label class="form-label" for="id_file">CSV file (max {{ max_mb }} MB, UTF-8, header row)</label><input class="form-control" type="file" name="file" id="id_file" accept=".csv" required>
+        {% for e in form.file.errors %}<div class="text-danger small mt-1">{{ e }}</div>{% endfor %}</div>
+      <button class="btn btn-primary">Upload &amp; validate</button>
+    </form>
+    <hr>
+    <form method="post" action="{% url 'load_samples' %}">{% csrf_token %}
+      <button class="btn btn-outline-secondary btn-sm">Load bundled sample datasets</button>
+      <span class="small text-muted ms-2">Iris, Diabetes, synthetic churn — labelled “Sample”.</span></form>
+  </div></div></div>
+  <div class="col-lg-7"><div class="card h-100"><div class="card-body">
+    <h6>Datasets</h6>
+    {% if datasets %}
+    <div class="table-responsive"><table class="table table-sm align-middle">
+      <thead><tr><th>Name</th><th>Rows</th><th>Cols</th><th>Target</th><th>Added</th></tr></thead><tbody>
+      {% for d in datasets %}<tr>
+        <td><a href="{% url 'dataset_detail' d.pk %}">{{ d.name }}</a>{% if d.is_sample %} <span class="badge text-bg-info">Sample data</span>{% endif %}</td>
+        <td>{{ d.n_rows }}</td><td>{{ d.n_columns }}</td>
+        <td>{% if d.target_column %}<code>{{ d.target_column }}</code> <small class="text-muted">{{ d.problem_type }}</small>{% else %}<span class="text-muted">not set</span>{% endif %}</td>
+        <td class="small">{{ d.created_at|date:"Y-m-d" }}</td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="empty">No datasets yet. Upload a CSV or load the sample datasets.</div>{% endif %}
+  </div></div></div>
+</div>
+{% endblock %}

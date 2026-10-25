@@ -1,0 +1,4 @@
+<form method="get" class="row g-2 mb-3"><div class="col-md-8">
+  <select class="form-select" name="model" onchange="this.form.submit()">
+    {% for m in models %}<option value="{{ m.pk }}" {% if tm and m.pk == tm.pk %}selected{% endif %}>v{{ m.version }} · {{ m.algorithm_label }} · {{ m.target_column }}</option>{% endfor %}
+  </select></div></form>

@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}Versions{% endblock %}
+{% block content %}
+<h3 class="mb-4">Model Version Management</h3>
+<div class="alert alert-light border small">The <strong>best evaluated</strong> model (top test score within a dataset/target) is tracked separately from the <strong>production</strong> model, which only changes when a staff user promotes or rolls back.
+  Current production: {% if production %}<strong>v{{ production.version }} {{ production.algorithm_label }}</strong>{% else %}<em>none</em>{% endif %}.</div>
+{% if user.is_staff %}<form method="post" action="{% url 'rollback' %}" class="mb-3">{% csrf_token %}<button class="btn btn-outline-danger btn-sm" onclick="return confirm('Roll back to the previous production model?')">Roll back to previous production model</button></form>{% endif %}
+<div class="card mb-3"><div class="card-body">
+{% if items %}
+<div class="table-responsive"><table class="table table-sm align-middle" data-sortable>
+  <thead><tr><th class="sortable">Version</th><th class="sortable">Algorithm</th><th class="sortable">Dataset → target</th><th class="sortable">Primary metric</th><th>Status</th><th class="sortable">Created</th><th></th></tr></thead><tbody>
+  {% for m in items %}<tr>
+    <td data-sort="{{ m.version }}">v{{ m.version }}</td><td>{{ m.algorithm_label }}</td><td>{{ m.dataset.name }} → <code>{{ m.target_column }}</code></td>
+    <td>{{ m.primary_metric }} {{ m.primary_value|num }}</td>
+    <td>{% if production and m.pk == production.pk %}<span class="badge text-bg-primary">production</span> {% endif %}{% if m.pk in best_ids %}<span class="badge text-bg-success">best evaluated</span>{% endif %}</td>
+    <td class="small">{{ m.created_at|date:"Y-m-d H:i" }}</td>
+    <td>{% if user.is_staff and not production or user.is_staff and m.pk != production.pk %}<form method="post" action="{% url 'promote' m.pk %}" class="d-flex gap-1">{% csrf_token %}<input class="form-control form-control-sm" name="note" placeholder="note (optional)" maxlength="200" style="width:150px"><button class="btn btn-sm btn-primary">Set production</button></form>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div>
+{% else %}<div class="empty">No model versions yet. <a href="{% url 'train' %}">Train a model</a>.</div>{% endif %}
+</div></div>
+<div class="card"><div class="card-body"><h6>Production history</h6>
+  {% for h in history %}<div class="small border-bottom py-1">{{ h.activated_at|date:"Y-m-d H:i" }} · v{{ h.model.version }} {{ h.model.algorithm_label }} · {{ h.action }}{% if h.note %} ({{ h.note }}){% endif %} · by {{ h.activated_by|default:"–" }}{% if h.is_current %} <span class="badge text-bg-primary">current</span>{% endif %}</div>
+  {% empty %}<div class="empty">No production changes yet.</div>{% endfor %}
+</div></div>
+{% endblock %}

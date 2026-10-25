@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.venv*/
+venv/
+__pycache__/
+*.pyc
+data/*
+datasets/*
+model_artifacts/*
+staticfiles/
+reports/
+docs/
+*.md
+!README.md
+Jenkinsfile

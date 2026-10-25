@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<h3 class="mb-4">Dashboard Overview</h3>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ n_datasets }}</div><div class="stat-label">Datasets</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ n_models }}</div><div class="stat-label">Trained models</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ n_predictions }}</div><div class="stat-label">Predictions logged</div></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card"><div class="card-body"><div class="stat">{{ n_failed }}</div><div class="stat-label">Failed predictions</div></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h6>Production model</h6>
+    {% if production %}
+      <p class="mb-1"><strong>v{{ production.version }} · {{ production.algorithm_label }}</strong></p>
+      <p class="text-muted small mb-1">{{ production.dataset.name }} → target <code>{{ production.target_column }}</code> ({{ production.problem_type }})</p>
+      <p class="small mb-0">{{ production.primary_metric }}: <strong>{{ production.primary_value|num }}</strong> on held-out test data</p>
+    {% else %}<div class="empty">No production model selected yet.<br><a href="{% url 'versions' %}">Choose one on the Model Versions page</a> after training.</div>{% endif %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+    <h6>Latest drift check</h6>
+    {% if latest_drift %}
+      <span class="badge badge-{{ latest_drift.status }}">{{ latest_drift.status }}</span>
+      <span class="small text-muted ms-2">v{{ latest_drift.model.version }} · {{ latest_drift.created_at|date:"Y-m-d H:i" }} · {{ latest_drift.current_size }} current samples</span>
+    {% else %}<div class="empty">No drift check has been run yet.</div>{% endif %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6>Recent models</h6>
+    {% for m in recent_models %}<div class="small py-1 border-bottom">v{{ m.version }} · {{ m.algorithm_label }} · {{ m.dataset.name }} · {{ m.primary_metric }} {{ m.primary_value|num }}</div>
+    {% empty %}<div class="empty">No models trained yet. <a href="{% url 'train' %}">Train one</a>.</div>{% endfor %}
+  </div></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-body">
+    <h6>Recent predictions</h6>
+    {% for p in recent_predictions %}<div class="small py-1 border-bottom">#{{ p.pk }} · v{{ p.model_version }} · {{ p.status }} · {{ p.output|default:"–" }} · {{ p.created_at|date:"Y-m-d H:i" }}</div>
+    {% empty %}<div class="empty">No predictions logged yet.</div>{% endfor %}
+  </div></div></div>
+</div>
+{% endblock %}

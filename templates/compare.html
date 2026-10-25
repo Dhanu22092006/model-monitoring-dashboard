@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}Comparison{% endblock %}
+{% block content %}
+<h3 class="mb-4">Model Comparison</h3>
+{% if not sel %}
+  <div class="card"><div class="card-body empty">No trained models yet. <a href="{% url 'train' %}">Train some models</a> to compare them.</div></div>
+{% else %}
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-8"><select class="form-select" onchange="location.href=this.value">
+    {% for g in groups %}<option value="?dataset={{ g.dataset_id }}&target={{ g.target_column|urlencode }}" {% if g.dataset_id == sel.dataset_id and g.target_column == sel.target_column %}selected{% endif %}>{{ g.dataset__name }} → {{ g.target_column }} ({{ g.problem_type }}, {{ g.n }} models)</option>{% endfor %}
+  </select></div></form>
+<div class="alert alert-light border small">Models are compared only within one dataset/target, all on the <strong>same held-out test split</strong>.
+  Ranking metric: <strong>{{ primary.0 }}</strong> ({% if primary.1 %}higher{% else %}lower{% endif %} is better).
+  {% if best %}Best evaluated: <strong>v{{ best.version }} {{ best.algorithm_label }}</strong>.{% endif %}
+  {% if production %}Current production: <strong>v{{ production.version }}</strong>{% if best and production.pk != best.pk and production.dataset_id == best.dataset_id %} (not the best evaluated){% endif %}.{% else %}No production model selected.{% endif %}</div>
+<div class="row">{% for c in charts %}<div class="col-lg-{% if charts|length > 2 %}6{% else %}6{% endif %}">{% include "_chart.html" with cfg=c.cfg cid=c.id title=c.title %}</div>{% endfor %}</div>
+<div class="card"><div class="card-body"><h6>Results (click a header to sort)</h6>
+  <div class="table-responsive"><table class="table table-sm table-hover align-middle" data-sortable>
+    <thead><tr><th class="sortable">Version</th><th class="sortable">Algorithm</th><th class="sortable">Dataset</th><th class="sortable">Target</th>
+      {% for k, label in cols %}<th class="sortable" title="{{ label }}">{{ k }}</th>{% endfor %}
+      <th class="sortable">Train (s)</th><th class="sortable">Latency (ms)</th><th class="sortable">Size</th><th class="sortable">Trained</th></tr></thead><tbody>
+    {% for m in items %}<tr>
+      <td data-sort="{{ m.version }}">v{{ m.version }}{% if best and m.pk == best.pk %} <span class="badge text-bg-success">best</span>{% endif %}{% if production and m.pk == production.pk %} <span class="badge text-bg-primary">production</span>{% endif %}</td>
+      <td>{{ m.algorithm_label }}</td><td>{{ m.dataset.name }}</td><td><code>{{ m.target_column }}</code></td>
+      {% for k, label in cols %}<td>{{ m.metrics|get_item:k|num }}</td>{% endfor %}
+      <td>{{ m.train_seconds|num:3 }}</td><td>{{ m.inference_latency_ms|num:3 }}</td><td data-sort="{{ m.model_size_bytes }}">{{ m.model_size_bytes|kb }}</td>
+      <td data-sort="{{ m.created_at|date:'c' }}">{{ m.created_at|date:"Y-m-d H:i" }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="small text-muted mb-0">Metric glossary: {% for k, label in cols %}<code>{{ k }}</code> = {{ label }}{% if not forloop.last %}; {% endif %}{% endfor %}. “–” means the metric is not computable (e.g. ROC-AUC with a single class in the test set).</p>
+</div></div>
+{% endif %}
+{% endblock %}

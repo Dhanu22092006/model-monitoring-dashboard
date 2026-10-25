@@ -1,0 +1,44 @@
+{% extends "base.html" %}{% load app_extras %}
+{% block title %}Monitoring{% endblock %}
+{% block content %}
+<h3 class="mb-4">Model Monitoring</h3>
+{% if not tm %}<div class="card"><div class="card-body empty">No models yet. Train and use a model to see monitoring data.</div></div>
+{% else %}
+{% include "_model_picker.html" %}
+<p class="small text-muted">Window: the latest {{ window }} logged predictions of v{{ tm.version }}. {% if production and production.pk == tm.pk %}<span class="badge text-bg-primary">production</span>{% endif %}</p>
+{% if data.total == 0 %}
+  <div class="card"><div class="card-body empty">No predictions have been logged for this model yet. <a href="{% url 'predict' %}?model={{ tm.pk }}">Make a prediction</a>.</div></div>
+{% else %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><div class="stat">{{ data.total }}</div><div class="stat-label">Predictions</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><div class="stat">{{ data.success_rate|pct }}</div><div class="stat-label">Success rate</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><div class="stat">{{ data.failure_rate|pct }}</div><div class="stat-label">Failure rate</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><div class="stat">{{ data.latency.avg_ms|num:2 }}</div><div class="stat-label">Avg ms</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><div class="stat">{{ data.latency.median_ms|num:2 }}</div><div class="stat-label">Median ms</div></div></div></div>
+  <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><div class="stat">{{ data.latency.p95_ms|num:2 }}</div><div class="stat-label">P95 ms</div></div></div></div>
+</div>
+<div class="row">
+  <div class="col-lg-6">{% include "_chart.html" with cfg=volume cid="vol" title="Prediction volume per day" %}</div>
+  <div class="col-lg-6">{% include "_chart.html" with cfg=dist cid="dist" title="Prediction distribution" %}</div>
+  <div class="col-lg-6">{% include "_chart.html" with cfg=lat cid="lat" title="Inference latency (ms, successful predictions)" %}</div>
+  <div class="col-lg-6">{% include "_chart.html" with cfg=usage cid="usage" title="Model version usage (all models)" %}</div>
+</div>
+<div class="card mb-3"><div class="card-body">
+  <h6>Live performance (needs actual labels)</h6>
+  {% with perf=data.performance %}
+  {% if not perf.available %}<div class="alert alert-secondary mb-0">{{ perf.note }} Add actual values on the <a href="{% url 'history' %}">Prediction History</a> page. Performance is <strong>not estimated</strong> without them — and data drift alone does not mean the model got worse.</div>
+  {% else %}
+    <p class="small text-muted">Based on {{ perf.n_labeled }} labelled prediction{{ perf.n_labeled|pluralize }}. {{ perf.note }}</p>
+    <div class="row g-2">{% for k, v in perf.metrics.items %}<div class="col-6 col-md-3"><div class="border rounded p-2"><div class="stat-label">{{ k }}</div><div class="fs-5 fw-bold">{{ v|num }}</div></div></div>{% endfor %}</div>
+    {% if perf.degradation %}<div class="mt-3 alert {% if perf.degradation.degraded %}alert-danger{% else %}alert-success{% endif %} mb-0">
+      {% if perf.degradation.degraded %}<strong>Performance degradation detected.</strong>{% else %}<strong>No performance degradation detected.</strong>{% endif %}
+      {{ perf.degradation.metric }}: test baseline {{ perf.degradation.baseline|num }} → live {{ perf.degradation.live|num }} ({{ perf.degradation.rule }}).</div>{% endif %}
+  {% endif %}{% endwith %}
+</div></div>
+<form method="post" class="mb-3">{% csrf_token %}<input type="hidden" name="model" value="{{ tm.pk }}"><button class="btn btn-outline-primary btn-sm">Save monitoring snapshot</button></form>
+<div class="card"><div class="card-body"><h6>Saved snapshots</h6>
+  {% for s in snapshots %}<div class="small border-bottom py-1">{{ s.created_at|date:"Y-m-d H:i" }} · {{ s.window_size }} predictions · success {{ s.metrics.success_rate|pct }} · P95 {{ s.metrics.latency.p95_ms|num:2 }} ms</div>
+  {% empty %}<div class="empty">No snapshots saved yet.</div>{% endfor %}
+</div></div>
+{% endif %}{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Train{% endblock %}
+{% block content %}
+<h3 class="mb-4">Model Training</h3>
+{% if not form.fields.dataset.queryset.exists %}
+  <div class="card"><div class="card-body empty">No datasets available. <a href="{% url 'datasets' %}">Upload or load a sample dataset</a> first.</div></div>
+{% else %}
+{{ meta|json_script:"dataset-meta" }}
+<div class="card"><div class="card-body">
+  <form method="post">{% csrf_token %}
+    {% for e in form.non_field_errors %}<div class="alert alert-danger">{{ e }}</div>{% endfor %}
+    <div class="row g-3">
+      <div class="col-md-4"><label class="form-label" for="id_dataset">Dataset</label>
+        <select class="form-select" name="dataset" id="id_dataset">{% for d in form.fields.dataset.queryset %}<option value="{{ d.pk }}" {% if form.dataset.value|stringformat:"s" == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>{{ form.dataset.errors }}</div>
+      <div class="col-md-4"><label class="form-label" for="id_target_column">Target column</label>
+        <select class="form-select" name="target_column" id="id_target_column"><option value="{{ form.target_column.value|default:'' }}">{{ form.target_column.value|default:'' }}</option></select>
+        {% for e in form.target_column.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+      <div class="col-md-2"><label class="form-label" for="id_problem_type">Problem type</label>
+        <select class="form-select" name="problem_type" id="id_problem_type"><option value="classification" {% if form.problem_type.value == 'classification' %}selected{% endif %}>Classification</option><option value="regression" {% if form.problem_type.value == 'regression' %}selected{% endif %}>Regression</option></select></div>
+      <div class="col-md-2"><label class="form-label" for="id_random_state">Random seed</label>
+        <input class="form-control" type="number" min="0" name="random_state" id="id_random_state" value="{{ form.random_state.value|default:42 }}">{{ form.random_state.errors }}</div>
+    </div>
+    <h6 class="mt-4">Algorithms</h6>
+    {% for e in form.algorithms.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+    <div class="row">{% for a in algos %}
+      <div class="col-md-4" data-algo-type="{{ a.type }}"><div class="form-check"><input class="form-check-input" type="checkbox" name="algorithms" value="{{ a.value }}" id="a{{ forloop.counter }}"><label class="form-check-label" for="a{{ forloop.counter }}">{{ a.label }}</label></div></div>
+    {% endfor %}</div>
+    <p class="small text-muted mt-3">All selected algorithms are trained on the <strong>same</strong> seeded 60/20/20 train/validation/test split (stratified for classification). Imputation, scaling and encoding are fitted on the training portion only. Training runs synchronously and may take a while for large data or SVC.</p>
+    <button class="btn btn-primary">Train selected models</button>
+  </form>
+</div></div>
+{% endif %}
+{% endblock %}
